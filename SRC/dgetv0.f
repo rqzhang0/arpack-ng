@@ -124,64 +124,65 @@ c     %----------------------------------------------------%
 c     | Include files for debugging and timing information |
 c     %----------------------------------------------------%
 c
-      include   'debug.h'
-      include   'stat.h'
+         include   'debug.h'
+         include   'stat.h'
 c
 c     %------------------%
 c     | Scalar Arguments |
 c     %------------------%
 c
-      character  bmat*1
-      logical    initv
-      integer    ido, ierr, itry, j, ldv, n
-      Double precision
-     &           rnorm
+         character  bmat*1
+         logical    initv
+         integer    ido, ierr, itry, j, ldv, n
+         Double precision
+     &              rnorm
 c
 c     %-----------------%
 c     | Array Arguments |
 c     %-----------------%
 c
-      integer    ipntr(3)
-      Double precision
-     &           resid(n), v(ldv,j), workd(2*n)
+         integer    ipntr(3)
+         Double precision
+     &              resid(n), v(ldv,j), workd(2*n)
 c
 c     %------------%
 c     | Parameters |
 c     %------------%
 c
-      Double precision
-     &           one, zero
-      parameter (one = 1.0D+0, zero = 0.0D+0)
+         Double precision
+     &              one, zero
+         parameter (one = 1.0D+0, zero = 0.0D+0)
 c
 c     %------------------------%
 c     | Local Scalars & Arrays |
 c     %------------------------%
 c
-      logical    first, orth
-      integer    idist, iseed(4), iter, msglvl, jj
-      Double precision
-     &           rnorm0
-      save       first, iseed, iter, msglvl, orth, rnorm0
+         logical    first, orth
+         integer    idist, iseed(4), iter, msglvl, jj
+         Double precision
+     &              rnorm0
+c     保留变量的值供后续使用
+         save       first, iseed, iter, msglvl, orth, rnorm0
 c
 c     %----------------------%
 c     | External Subroutines |
 c     %----------------------%
 c
-      external   dlarnv, dvout, dcopy, dgemv, arscnd
+         external   dlarnv, dvout, dcopy, dgemv, arscnd
 c
 c     %--------------------%
 c     | External Functions |
 c     %--------------------%
 c
-      Double precision
-     &           ddot, dnrm2
-      external   ddot, dnrm2
+         Double precision
+     &              ddot, dnrm2
+         external   ddot, dnrm2
 c
 c     %---------------------%
 c     | Intrinsic Functions |
 c     %---------------------%
 c
-      intrinsic    abs, sqrt
+         intrinsic    abs, sqrt
 c
 c     %-----------------------%
 c     | Executable Statements |
@@ -193,25 +194,25 @@ c     | Initialize the seed of the LAPACK |
 c     | random number generator           |
 c     %-----------------------------------%
 c
-      iseed(1) = 1
-      iseed(2) = 3
-      iseed(3) = 5
-      iseed(4) = 7
-c
-      if (ido .eq.  0) then
+         iseed(1) = 1
+         iseed(2) = 3
+         iseed(3) = 5
+         iseed(4) = 7
+c 注意此处条件判断语句
+         if (ido .eq.  0) then
 c
 c        %-------------------------------%
 c        | Initialize timing statistics  |
 c        | & message level for debugging |
 c        %-------------------------------%
+c     计时
+            call arscnd (t0)
+            msglvl = mgetv0
 c
-         call arscnd (t0)
-         msglvl = mgetv0
-c
-         ierr   = 0
-         iter   = 0
-         first  = .FALSE.
-         orth   = .FALSE.
+            ierr   = 0
+            iter   = 0
+            first  = .FALSE.
+            orth   = .FALSE.
 c
 c        %-----------------------------------------------------%
 c        | Possibly generate a random starting vector in RESID |
@@ -222,85 +223,86 @@ c        |    idist = 2: uniform (-1,1) distribution;          |
 c        |    idist = 3: normal  (0,1)  distribution;          |
 c        %-----------------------------------------------------%
 c
-         if (.not.initv) then
-            idist = 2
-            call dlarnv (idist, iseed, n, resid)
-         end if
+            if (.not.initv) then
+               idist = 2
+               call dlarnv (idist, iseed, n, resid)
+            end if
 c
 c        %----------------------------------------------------------%
 c        | Force the starting vector into the range of OP to handle |
 c        | the generalized problem when B is possibly (singular).   |
 c        %----------------------------------------------------------%
 c
-         call arscnd (t2)
-         if (itry .eq. 1) then
-            nopx = nopx + 1
-            ipntr(1) = 1
-            ipntr(2) = n + 1
-            call dcopy (n, resid, 1, workd, 1)
-            ido = -1
-            go to 9000
-         else if (itry .gt. 1 .and. bmat .eq. 'G') then
-            call dcopy (n, resid, 1, workd(n + 1), 1)
+            call arscnd (t2)
+            if (itry .eq. 1) then
+               nopx = nopx + 1
+               ipntr(1) = 1
+               ipntr(2) = n + 1
+               call dcopy (n, resid, 1, workd, 1)
+               ido = -1
+               return
+            else if (itry .gt. 1 .and. bmat .eq. 'G') then
+               call dcopy (n, resid, 1, workd(n + 1), 1)
+            end if
          end if
-      end if
-c
+c 最开始的if语句在此处结束
 c     %-----------------------------------------%
 c     | Back from computing OP*(initial-vector) |
 c     %-----------------------------------------%
 c
-      if (first) go to 20
+         if (first) go to 20
 c
 c     %-----------------------------------------------%
 c     | Back from computing OP*(orthogonalized-vector) |
 c     %-----------------------------------------------%
 c
-      if (orth)  go to 40
+         if (orth)  go to 40
 c
-      if (bmat .eq. 'G') then
-         call arscnd (t3)
-         tmvopx = tmvopx + (t3 - t2)
-      end if
+         if (bmat .eq. 'G') then
+            call arscnd (t3)
+            tmvopx = tmvopx + (t3 - t2)
+         end if
 c
 c     %------------------------------------------------------%
 c     | Starting vector is now in the range of OP; r = OP*r; |
 c     | Compute B-norm of starting vector.                   |
 c     %------------------------------------------------------%
 c
-      call arscnd (t2)
-      first = .TRUE.
-      if (itry .eq. 1) call dcopy (n, workd(n + 1), 1, resid, 1)
-      if (bmat .eq. 'G') then
-         nbx = nbx + 1
-         ipntr(1) = n + 1
-         ipntr(2) = 1
-         ido = 2
-         go to 9000
-      else if (bmat .eq. 'I') then
-         call dcopy (n, resid, 1, workd, 1)
-      end if
+         call arscnd (t2)
+         first = .TRUE.
+         if (itry .eq. 1) call dcopy (n, workd(n + 1), 1, resid, 1)
+         if (bmat .eq. 'G') then
+            nbx = nbx + 1
+            ipntr(1) = n + 1
+            ipntr(2) = 1
+            ido = 2
+            go to 9000
+         else if (bmat .eq. 'I') then
+c dcopy将数组resid中的内容复制到word中,复制长度为n
+            call dcopy (n, resid, 1, workd, 1)
+         end if
 c
-   20 continue
+   20    continue
 c
-      if (bmat .eq. 'G') then
-         call arscnd (t3)
-         tmvbx = tmvbx + (t3 - t2)
-      end if
+         if (bmat .eq. 'G') then
+            call arscnd (t3)
+            tmvbx = tmvbx + (t3 - t2)
+         end if
 c
-      first = .FALSE.
-      if (bmat .eq. 'G') then
-          rnorm0 = ddot (n, resid, 1, workd, 1)
-          rnorm0 = sqrt(abs(rnorm0))
-      else if (bmat .eq. 'I') then
-           rnorm0 = dnrm2(n, resid, 1)
-      end if
-      rnorm  = rnorm0
+         first = .FALSE.
+         if (bmat .eq. 'G') then
+            rnorm0 = ddot (n, resid, 1, workd, 1)
+            rnorm0 = sqrt(abs(rnorm0))
+         else if (bmat .eq. 'I') then
+            rnorm0 = dnrm2(n, resid, 1)
+         end if
+         rnorm  = rnorm0
 c
 c     %---------------------------------------------%
 c     | Exit if this is the very first Arnoldi step |
 c     %---------------------------------------------%
 c
-      if (j .eq. 1) go to 50
+         if (j .eq. 1) go to 50
 c
 c     %----------------------------------------------------------------
 c     | Otherwise need to B-orthogonalize the starting vector against |
@@ -314,67 +316,116 @@ c     | Stopping criteria used for iter. ref. is discussed in         |
 c     | Parlett's book, page 107 and in Gragg & Reichel TOMS paper.   |
 c     %---------------------------------------------------------------%
 c
-      orth = .TRUE.
-   30 continue
+         orth = .TRUE.
+c 恶心的go to 语句
 c
-      call dgemv ('T', n, j-1, one, v, ldv, workd, 1,
-     &            zero, workd(n+1), 1)
-      call dgemv ('N', n, j-1, -one, v, ldv, workd(n+1), 1,
-     &            one, resid, 1)
+         call dgemv ('T', n, j-1, one, v, ldv, workd, 1,
+     &               zero, workd(n+1), 1)
+         call dgemv ('N', n, j-1, -one, v, ldv, workd(n+1), 1,
+     &               one, resid, 1)
 c
 c     %----------------------------------------------------------%
 c     | Compute the B-norm of the orthogonalized starting vector |
 c     %----------------------------------------------------------%
 c
-      call arscnd (t2)
-      if (bmat .eq. 'G') then
-         nbx = nbx + 1
-         call dcopy (n, resid, 1, workd(n+1), 1)
-         ipntr(1) = n + 1
-         ipntr(2) = 1
-         ido = 2
-         go to 9000
-      else if (bmat .eq. 'I') then
-         call dcopy (n, resid, 1, workd, 1)
-      end if
+         call arscnd (t2)
+         if (bmat .eq. 'G') then
+            nbx = nbx + 1
+            call dcopy (n, resid, 1, workd(n+1), 1)
+            ipntr(1) = n + 1
+            ipntr(2) = 1
+            ido = 2
+            go to 9000
+         else if (bmat .eq. 'I') then
+            call dcopy (n, resid, 1, workd, 1)
+         end if
 c
-   40 continue
+   40    continue
 c
-      if (bmat .eq. 'G') then
-         call arscnd (t3)
-         tmvbx = tmvbx + (t3 - t2)
-      end if
+         if (bmat .eq. 'G') then
+            call arscnd (t3)
+            tmvbx = tmvbx + (t3 - t2)
+         end if
 c
-      if (bmat .eq. 'G') then
-         rnorm = ddot (n, resid, 1, workd, 1)
-         rnorm = sqrt(abs(rnorm))
-      else if (bmat .eq. 'I') then
-         rnorm = dnrm2(n, resid, 1)
-      end if
+         if (bmat .eq. 'G') then
+            rnorm = ddot (n, resid, 1, workd, 1)
+            rnorm = sqrt(abs(rnorm))
+         else if (bmat .eq. 'I') then
+            rnorm = dnrm2(n, resid, 1)
+         end if
 c
 c     %--------------------------------------%
 c     | Check for further orthogonalization. |
 c     %--------------------------------------%
 c
-      if (msglvl .gt. 2) then
-          call dvout (logfil, 1, [rnorm0], ndigit,
-     &                '_getv0: re-orthonalization ; rnorm0 is')
-          call dvout (logfil, 1, [rnorm], ndigit,
-     &                '_getv0: re-orthonalization ; rnorm is')
-      end if
+         if (msglvl .gt. 2) then
+            call dvout (logfil, 1, [rnorm0], ndigit,
+     &                  '_getv0: re-orthonalization ; rnorm0 is')
+            call dvout (logfil, 1, [rnorm], ndigit,
+     &                  '_getv0: re-orthonalization ; rnorm is')
+         end if
 c
-      if (rnorm .gt. 0.717*rnorm0) go to 50
+         if (rnorm .gt. 0.717*rnorm0) go to 50
 c
-      iter = iter + 1
-      if (iter .le. 5) then
+         iter = iter + 1
+c 将if语句改称 do while语句并舍弃 if 语句中的个go to 语句
+         do while (iter .le. 5)
+
 c
 c        %-----------------------------------%
 c        | Perform iterative refinement step |
 c        %-----------------------------------%
 c
-         rnorm0 = rnorm
-         go to 30
-      else
+            rnorm0 = rnorm
+
+            call dgemv ('T', n, j-1, one, v, ldv, workd, 1,
+     &                  zero, workd(n+1), 1)
+            call dgemv ('N', n, j-1, -one, v, ldv, workd(n+1), 1,
+     &                  one, resid, 1)
+c
+c     %----------------------------------------------------------%
+c     | Compute the B-norm of the orthogonalized starting vector |
+c     %----------------------------------------------------------%
+c
+            call arscnd (t2)
+            if (bmat .eq. 'G') then
+               nbx = nbx + 1
+               call dcopy (n, resid, 1, workd(n+1), 1)
+               ipntr(1) = n + 1
+               ipntr(2) = 1
+               ido = 2
+               return
+            else if (bmat .eq. 'I') then
+               call dcopy (n, resid, 1, workd, 1)
+            end if
+c
+            if (bmat .eq. 'G') then
+               call arscnd (t3)
+               tmvbx = tmvbx + (t3 - t2)
+            end if
+c
+            if (bmat .eq. 'G') then
+               rnorm = ddot (n, resid, 1, workd, 1)
+               rnorm = sqrt(abs(rnorm))
+            else if (bmat .eq. 'I') then
+               rnorm = dnrm2(n, resid, 1)
+            end if
+c
+c     %--------------------------------------%
+c     | Check for further orthogonalization. |
+c     %--------------------------------------%
+c
+            if (msglvl .gt. 2) then
+               call dvout (logfil, 1, [rnorm0], ndigit,
+     &                 '_getv0: re-orthonalization ; rnorm0 is')
+               call dvout (logfil, 1, [rnorm], ndigit,
+     &                 '_getv0: re-orthonalization ; rnorm is')
+            end if
+c
+            if (rnorm .gt. 0.717*rnorm0) go to 50
+c
+            iter = iter + 1
+         end do
 c
 c        %------------------------------------%
 c        | Iterative refinement step "failed" |
@@ -385,25 +436,24 @@ c
    45    continue
          rnorm = zero
          ierr = -1
-      end if
 c
-   50 continue
+   50    continue
 c
-      if (msglvl .gt. 0) then
-         call dvout (logfil, 1, [rnorm], ndigit,
-     &        '_getv0: B-norm of initial / restarted starting vector')
-      end if
-      if (msglvl .gt. 3) then
-         call dvout (logfil, n, resid, ndigit,
-     &        '_getv0: initial / restarted starting vector')
-      end if
-      ido = 99
+         if (msglvl .gt. 0) then
+            call dvout (logfil, 1, [rnorm], ndigit,
+     &       '_getv0: B-norm of initial / restarted starting vector')
+         end if
+         if (msglvl .gt. 3) then
+            call dvout (logfil, n, resid, ndigit,
+     &           '_getv0: initial / restarted starting vector')
+         end if
+         ido = 99
 c
-      call arscnd (t1)
-      tgetv0 = tgetv0 + (t1 - t0)
+         call arscnd (t1)
+         tgetv0 = tgetv0 + (t1 - t0)
 c
- 9000 continue
-      return
+ 9000    continue
+         return
 c
 c     %---------------%
 c     | End of dgetv0 |
