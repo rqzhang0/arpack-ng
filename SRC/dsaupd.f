@@ -539,7 +539,7 @@ c
          if (ierr .ne. 0) then
             info = ierr
             ido  = 99
-            go to 9000
+            return
          end if
 c
 c        %------------------------%
@@ -611,7 +611,7 @@ c     | to compute operations involving OP or shifts.    |
 c     %--------------------------------------------------%
 c
       if (ido .eq. 3) iparam(8) = np
-      if (ido .ne. 99) go to 9000
+      if (ido .ne. 99) return
 c
       iparam(3) = mxiter
       iparam(5) = np
@@ -624,7 +624,7 @@ c     | Exit if there was an informational |
 c     | error within dsaup2 .               |
 c     %------------------------------------%
 c
-      if (info .lt. 0) go to 9000
+      if (info .lt. 0) return
       if (info .eq. 2) info = 3
 c
       if (msglvl .gt. 0) then
@@ -679,7 +679,6 @@ c
      &      5x, 'Total time in convergence testing          = ', f12.6)
       end if
 c
- 9000 continue
 c
       return
 c
