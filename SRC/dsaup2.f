@@ -327,7 +327,7 @@ c
          call dgetv0 (ido, bmat, 1, initv, n, 1, v, ldv, resid, rnorm,
      &                ipntr, workd, info)
 c
-         if (ido .ne. 99) go to 9000
+         if (ido .ne. 99) return
 c
          if (rnorm .eq. zero) then
 c
@@ -373,7 +373,7 @@ c     | ido .ne. 99 implies use of reverse communication  |
 c     | to compute operations involving OP and possibly B |
 c     %---------------------------------------------------%
 c
-      if (ido .ne. 99) go to 9000
+      if (ido .ne. 99) return
 c
       if (info .gt. 0) then
 c
@@ -428,7 +428,7 @@ c        | ido .ne. 99 implies use of reverse communication  |
 c        | to compute operations involving OP and possibly B |
 c        %---------------------------------------------------%
 c
-         if (ido .ne. 99) go to 9000
+         if (ido .ne. 99) return
 c
          if (info .gt. 0) then
 c
@@ -720,7 +720,7 @@ c           %-----------------------------------------------------%
 c
             ushift = .true.
             ido = 3
-            go to 9000
+            return
          end if
 c
    50    continue
@@ -783,7 +783,7 @@ c           %----------------------------------%
 c           | Exit in order to compute B*RESID |
 c           %----------------------------------%
 c
-            go to 9000
+            return
          else if (bmat .eq. 'I') then
             call dcopy (n, resid, 1, workd, 1)
          end if
@@ -841,7 +841,6 @@ c
       call arscnd (t1)
       tsaup2 = t1 - t0
 c
- 9000 continue
       return
 c
 c     %---------------%
