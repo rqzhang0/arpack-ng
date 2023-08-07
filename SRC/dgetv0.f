@@ -250,59 +250,76 @@ c     %-----------------------------------------%
 c     | Back from computing OP*(initial-vector) |
 c     %-----------------------------------------%
 c
-         if (first) go to 20
+         if (.NOT. orth) then
+            if (.NOT. first) then
 c
 c     %-----------------------------------------------%
 c     | Back from computing OP*(orthogonalized-vector) |
 c     %-----------------------------------------------%
 c
-         if (orth)  go to 40
 c
-         if (bmat .eq. 'G') then
-            call arscnd (t3)
-            tmvopx = tmvopx + (t3 - t2)
-         end if
+               if (bmat .eq. 'G') then
+                  call arscnd (t3)
+                  tmvopx = tmvopx + (t3 - t2)
+               end if
 c
 c     %------------------------------------------------------%
 c     | Starting vector is now in the range of OP; r = OP*r; |
 c     | Compute B-norm of starting vector.                   |
 c     %------------------------------------------------------%
 c
-         call arscnd (t2)
-         first = .TRUE.
-         if (itry .eq. 1) call dcopy (n, workd(n + 1), 1, resid, 1)
-         if (bmat .eq. 'G') then
-            nbx = nbx + 1
-            ipntr(1) = n + 1
-            ipntr(2) = 1
-            ido = 2
-            go to 9000
-         else if (bmat .eq. 'I') then
+               call arscnd (t2)
+               first = .TRUE.
+               if (itry .eq. 1) then
+                  call dcopy (n, workd(n + 1), 1, resid, 1)
+               end if
+               if (bmat .eq. 'G') then
+                  nbx = nbx + 1
+                  ipntr(1) = n + 1
+                  ipntr(2) = 1
+                  ido = 2
+                  return
+               else if (bmat .eq. 'I') then
 c dcopy将数组resid中的内容复制到word中,复制长度为n
-            call dcopy (n, resid, 1, workd, 1)
-         end if
+                  call dcopy (n, resid, 1, workd, 1)
+               end if
 c
-   20    continue
+            end if
 c
-         if (bmat .eq. 'G') then
-            call arscnd (t3)
-            tmvbx = tmvbx + (t3 - t2)
-         end if
+            if (bmat .eq. 'G') then
+               call arscnd (t3)
+               tmvbx = tmvbx + (t3 - t2)
+            end if
 c
-         first = .FALSE.
-         if (bmat .eq. 'G') then
-            rnorm0 = ddot (n, resid, 1, workd, 1)
-            rnorm0 = sqrt(abs(rnorm0))
-         else if (bmat .eq. 'I') then
-            rnorm0 = dnrm2(n, resid, 1)
-         end if
-         rnorm  = rnorm0
+            first = .FALSE.
+            if (bmat .eq. 'G') then
+               rnorm0 = ddot (n, resid, 1, workd, 1)
+               rnorm0 = sqrt(abs(rnorm0))
+            else if (bmat .eq. 'I') then
+               rnorm0 = dnrm2(n, resid, 1)
+            end if
+            rnorm  = rnorm0
 c
 c     %---------------------------------------------%
 c     | Exit if this is the very first Arnoldi step |
 c     %---------------------------------------------%
 c
-         if (j .eq. 1) go to 50
+            if (j .eq. 1) then
+               if (msglvl .gt. 0) then
+                  call dvout (logfil, 1, [rnorm], ndigit,
+     &  '_getv0: B-norm of initial / restarted starting vector')
+               end if
+               if (msglvl .gt. 3) then
+                  call dvout (logfil, n, resid, ndigit,
+     &                 '_getv0: initial / restarted starting vector')
+               end if
+               ido = 99
+c
+               call arscnd (t1)
+               tgetv0 = tgetv0 + (t1 - t0)
+c
+               return
+            end if
 c
 c     %----------------------------------------------------------------
 c     | Otherwise need to B-orthogonalize the starting vector against |
@@ -316,31 +333,30 @@ c     | Stopping criteria used for iter. ref. is discussed in         |
 c     | Parlett's book, page 107 and in Gragg & Reichel TOMS paper.   |
 c     %---------------------------------------------------------------%
 c
-         orth = .TRUE.
-c 恶心的go to 语句
+            orth = .TRUE.
 c
-         call dgemv ('T', n, j-1, one, v, ldv, workd, 1,
-     &               zero, workd(n+1), 1)
-         call dgemv ('N', n, j-1, -one, v, ldv, workd(n+1), 1,
-     &               one, resid, 1)
+            call dgemv ('T', n, j-1, one, v, ldv, workd, 1,
+     &                  zero, workd(n+1), 1)
+            call dgemv ('N', n, j-1, -one, v, ldv, workd(n+1), 1,
+     &                  one, resid, 1)
 c
 c     %----------------------------------------------------------%
 c     | Compute the B-norm of the orthogonalized starting vector |
 c     %----------------------------------------------------------%
 c
-         call arscnd (t2)
-         if (bmat .eq. 'G') then
-            nbx = nbx + 1
-            call dcopy (n, resid, 1, workd(n+1), 1)
-            ipntr(1) = n + 1
-            ipntr(2) = 1
-            ido = 2
-            go to 9000
-         else if (bmat .eq. 'I') then
-            call dcopy (n, resid, 1, workd, 1)
-         end if
+            call arscnd (t2)
+            if (bmat .eq. 'G') then
+               nbx = nbx + 1
+               call dcopy (n, resid, 1, workd(n+1), 1)
+               ipntr(1) = n + 1
+               ipntr(2) = 1
+               ido = 2
+               return
+            else if (bmat .eq. 'I') then
+               call dcopy (n, resid, 1, workd, 1)
+            end if
 c
-   40    continue
+         end if
 c
          if (bmat .eq. 'G') then
             call arscnd (t3)
@@ -365,10 +381,24 @@ c
      &                  '_getv0: re-orthonalization ; rnorm is')
          end if
 c
-         if (rnorm .gt. 0.717*rnorm0) go to 50
+         if (rnorm .gt. 0.717*rnorm0) then
+            if (msglvl .gt. 0) then
+               call dvout (logfil, 1, [rnorm], ndigit,
+     &          '_getv0: B-norm of initial / restarted starting vector')
+            end if
+            if (msglvl .gt. 3) then
+               call dvout (logfil, n, resid, ndigit,
+     &              '_getv0: initial / restarted starting vector')
+            end if
+            ido = 99
+c
+            call arscnd (t1)
+            tgetv0 = tgetv0 + (t1 - t0)
+c
+            return
+         end if
 c
          iter = iter + 1
-c 将if语句改称 do while语句并舍弃 if 语句中的个go to 语句
          do while (iter .le. 5)
 
 c
@@ -422,7 +452,22 @@ c
      &                 '_getv0: re-orthonalization ; rnorm is')
             end if
 c
-            if (rnorm .gt. 0.717*rnorm0) go to 50
+            if (rnorm .gt. 0.717*rnorm0) then
+               if (msglvl .gt. 0) then
+                  call dvout (logfil, 1, [rnorm], ndigit,
+     &   '_getv0: B-norm of initial / restarted starting vector')
+               end if
+               if (msglvl .gt. 3) then
+                  call dvout (logfil, n, resid, ndigit,
+     &                 '_getv0: initial / restarted starting vector')
+               end if
+               ido = 99
+c
+               call arscnd (t1)
+               tgetv0 = tgetv0 + (t1 - t0)
+c
+               return
+            end if
 c
             iter = iter + 1
          end do
@@ -437,8 +482,6 @@ c
          rnorm = zero
          ierr = -1
 c
-   50    continue
-c
          if (msglvl .gt. 0) then
             call dvout (logfil, 1, [rnorm], ndigit,
      &       '_getv0: B-norm of initial / restarted starting vector')
@@ -452,7 +495,6 @@ c
          call arscnd (t1)
          tgetv0 = tgetv0 + (t1 - t0)
 c
- 9000    continue
          return
 c
 c     %---------------%
