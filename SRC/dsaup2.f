@@ -336,7 +336,16 @@ c           | The initial vector is zero. Error exit. |
 c           %-----------------------------------------%
 c
             info = -9
-            go to 1200
+           ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+        call arscnd (t1)
+        tsaup2 = t1 - t0
+c
+       return
          end if
          getv0 = .false.
          ido  = 0
@@ -346,20 +355,20 @@ c     %------------------------------------------------------------%
 c     | Back from reverse communication: continue with update step |
 c     %------------------------------------------------------------%
 c
-      if (update) go to 20
 c
 c     %-------------------------------------------%
 c     | Back from computing user specified shifts |
 c     %-------------------------------------------%
 c
-      if (ushift) go to 50
 c
 c     %-------------------------------------%
 c     | Back from computing residual norm   |
 c     | at the end of the current iteration |
 c     %-------------------------------------%
 c
-      if (cnorm)  go to 100
+      if (.not. cnorm)  then
+      if (.not. ushift) then 
+      if (.not. update) then
 c
 c     %----------------------------------------------------------%
 c     | Compute the first NEV steps of the Lanczos factorization |
@@ -386,7 +395,16 @@ c
          np   = info
          mxiter = iter
          info = -9999
-         go to 1200
+         ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+      call arscnd (t1)
+      tsaup2 = t1 - t0
+c
+      return
       end if
 c
 c     %--------------------------------------------------------------%
@@ -417,7 +435,7 @@ c        | Compute NP additional steps of the Lanczos factorization. |
 c        %------------------------------------------------------------%
 c
          ido = 0
-   20    continue
+      end if
          update = .true.
 c
          call dsaitr (ido, bmat, n, nev, np, mode, resid, rnorm, v,
@@ -441,7 +459,16 @@ c
             np = info
             mxiter = iter
             info = -9999
-            go to 1200
+         ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+      call arscnd (t1)
+      tsaup2 = t1 - t0
+c
+      return
          end if
          update = .false.
 c
@@ -459,7 +486,16 @@ c
 c
          if (ierr .ne. 0) then
             info = -8
-            go to 1200
+         ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+      call arscnd (t1)
+      tsaup2 = t1 - t0
+c
+      return
          end if
 c
 c        %----------------------------------------------------%
@@ -664,7 +700,19 @@ c
             if (np .eq. 0 .and. nconv .lt. nev0) info = 2
 c
             np = nconv
-            go to 1100
+      mxiter = iter
+      nev = nconv
+c
+      ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+      call arscnd (t1)
+      tsaup2 = t1 - t0
+c
+      return
 c
          else if (nconv .lt. nev .and. ishift .eq. 1) then
 c
@@ -723,7 +771,7 @@ c
             return
          end if
 c
-   50    continue
+      end if
 c
 c        %------------------------------------%
 c        | Back from reverse communication;   |
@@ -788,7 +836,7 @@ c
             call dcopy (n, resid, 1, workd, 1)
          end if
 c
-  100    continue
+      end if
 c
 c        %----------------------------------%
 c        | Back from reverse communication; |
@@ -807,7 +855,6 @@ c
             rnorm = dnrm2(n, resid, 1)
          end if
          cnorm = .false.
-  130    continue
 c
          if (msglvl .gt. 2) then
             call dvout (logfil, 1, [rnorm], ndigit,
@@ -826,12 +873,10 @@ c     |  E N D     O F     M A I N     I T E R A T I O N     L O O P  |
 c     |                                                               |
 c     %---------------------------------------------------------------%
 c
- 1100 continue
 c
       mxiter = iter
       nev = nconv
 c
- 1200 continue
       ido = 99
 c
 c     %------------%
