@@ -1,0 +1,381 @@
+ARPACK-\/\+NG is a collection of Fortran77 subroutines designed to solve large scale eigenvalue problems. \tabulinesep=1mm
+\begin{longtabu}spread 0pt [c]{*{3}{|X[-1]}|}
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ mandatory dependencies   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ optional dependencies   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ category    }\\\cline{1-3}
+\endfirsthead
+\hline
+\endfoot
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ mandatory dependencies   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ optional dependencies   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ category    }\\\cline{1-3}
+\endhead
+BLAS, LAPACK   &MPI, Eigen3, Boost.\+Python   &Linear\+Algebra   \\\cline{1-3}
+\end{longtabu}
+\hypertarget{md_README_autotoc_md1}{}\doxysection{About the project}\label{md_README_autotoc_md1}
+This project started as a joint project between Debian, Octave and Scilab in order to provide a common and maintained version of arpack. This is now a community project maintained by a few volunteers. Indeed, no single release has been published by Rice university for the last few years and since many software (Octave, Scilab, R, Matlab...) forked it and implemented their own modifications, arpack-\/ng aims to tackle this by providing a common repository, maintained versions with a testsuite. {\ttfamily arpack-\/ng} is replacing arpack almost everywhere.\hypertarget{md_README_autotoc_md2}{}\doxysection{Important Features}\label{md_README_autotoc_md2}
+
+\begin{DoxyItemize}
+\item Reverse Communication Interface (RCI).
+\item Single and Double Precision Real Arithmetic Versions for Symmetric, Non-\/symmetric, Standard or Generalized Problems.
+\item Single and Double Precision Complex Arithmetic Versions for Standard or Generalized Problems.
+\item Routines for Banded Matrices -\/ Standard or Generalized Problems.
+\item Routines for The Singular Value Decomposition.
+\item Example driver routines that may be used as templates to implement numerous
+\item Shift-\/\+Invert strategies for all problem types, data types and precision.
+\item {\ttfamily arpackmm}\+: utility to test arpack with matrix market files. Note\+: to run this utility, you need the eigen library (to handle RCI).
+\end{DoxyItemize}\hypertarget{md_README_autotoc_md3}{}\doxysection{Documentation}\label{md_README_autotoc_md3}
+Within DOCUMENTS directory there are three files for templates on how to invoke the computational modes of ARPACK.
+
+
+\begin{DoxyItemize}
+\item ex-\/sym.\+doc
+\item ex-\/nonsym.\+doc and
+\item ex-\/complex.\+doc
+\end{DoxyItemize}
+
+Also look in the README.\+MD file for explanations concerning the other documents.\hypertarget{md_README_autotoc_md4}{}\doxysection{ILP64 support}\label{md_README_autotoc_md4}
+About ILP64 support\+:
+
+
+\begin{DoxyItemize}
+\item Sequential arpack supports \href{https://www.intel.com/content/www/us/en/develop/documentation/onemkl-linux-developer-guide/top/linking-your-application-with-onemkl/linking-in-detail/linking-with-interface-libraries/using-the-ilp64-interface-vs-lp64-interface.html}{\texttt{ ILP64}}, but, parallel arpack doesn\textquotesingle{}t.
+\item Reminder\+: you can NOT mix {\ttfamily ILP64} with {\ttfamily LP64}. If you compile {\ttfamily arpack-\/ng} with {\ttfamily ILP64} (resp. {\ttfamily LP64}) support, you MUST insure your BLAS/\+LAPACK is compliant with {\ttfamily ILP64} (resp. {\ttfamily LP64}).
+\item Set {\ttfamily INTERFACE64} at configure time.
+\end{DoxyItemize}
+
+Note for F77/\+F90 developers\+:
+
+
+\begin{DoxyItemize}
+\item All files which needs {\ttfamily ILP64} support must include {\ttfamily \char`\"{}arpackicb.\+h\char`\"{}}.
+\item When coding, use {\ttfamily i\+\_\+int} (defined in {\ttfamily \mbox{\hyperlink{arpackicb_8h_source}{arpackicb.\+h}}}) instead of {\ttfamily c\+\_\+int}. {\ttfamily i\+\_\+int} stands for ISO\+\_\+\+C\+\_\+\+BINDING integer\+: it\textquotesingle{}s {\ttfamily \#defined} to {\ttfamily c\+\_\+int} or {\ttfamily c\+\_\+int64\+\_\+t} according to the architecture.
+\end{DoxyItemize}
+
+Note for C/\+C++ developers\+:
+
+
+\begin{DoxyItemize}
+\item All files which needs {\ttfamily ILP64} support must include {\ttfamily \char`\"{}arpackdef.\+h\char`\"{}}.
+\item When coding, use {\ttfamily a\+\_\+int} (defined in {\ttfamily \mbox{\hyperlink{arpackdef_8h_source}{arpackdef.\+h}}}) instead of {\ttfamily int}. Here, {\ttfamily a\+\_\+int} stands for \char`\"{}architecture int\char`\"{}\+: it\textquotesingle{}s {\ttfamily \#defined} to {\ttfamily int} or {\ttfamily int64\+\_\+t} according to the architecture.
+\end{DoxyItemize}
+
+{\bfseries{Example}}\+: to test arpack with sequential {\ttfamily ILP64} MKL assuming you use gnu compilers
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ ./bootstrap}
+\DoxyCodeLine{\$ export FFLAGS='-\/DMKL\_ILP64 -\/I/usr/include/mkl'}
+\DoxyCodeLine{\$ export FCFLAGS='-\/DMKL\_ILP64 -\/I/usr/include/mkl'}
+\DoxyCodeLine{\$ export LIBS='-\/Wl,-\/-\/no-\/as-\/needed -\/L/usr/lib/x86\_64-\/linux-\/gnu -\/lmkl\_sequential -\/lmkl\_core -\/lpthread -\/lm -\/ldl'}
+\DoxyCodeLine{\$ export INTERFACE64=1}
+\DoxyCodeLine{\$ ./configure -\/-\/with-\/blas=mkl\_gf\_ilp64 -\/-\/with-\/lapack=mkl\_gf\_ilp64}
+\DoxyCodeLine{\$ make all check}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md5}{}\doxysection{ISO\+\_\+\+C\+\_\+\+BINDING support}\label{md_README_autotoc_md5}
+About ISO\+\_\+\+C\+\_\+\+BINDING support\+:
+
+
+\begin{DoxyItemize}
+\item The install will now provide {\ttfamily arpack.\+h/hpp}, {\ttfamily parpack.\+h/hpp} and friends.
+\item Examples of use can be found in {\ttfamily ./\+TESTS} and{\ttfamily ./\+PARPACK/\+TESTS/\+MPI}.
+\end{DoxyItemize}
+
+ISO\+\_\+\+C\+\_\+\+BINDING is a feature of modern Fortran meant to handle safely interoperability between Fortran and C (in practice, no more need to use ugly tricks to link F77 functions to C code using \char`\"{}underscored\char`\"{} symbols). Basically, ISO\+\_\+\+C\+\_\+\+BINDING make sure all fortran variables are typed (which may not always be the case when using {\ttfamily implicit} keyword in fortran)\+: this way, C compilers can link properly. For more informations on ISO\+\_\+\+C\+\_\+\+BINDING, you can checkout the following links\+:
+
+
+\begin{DoxyItemize}
+\item \href{http://fortranwiki.org/fortran/show/ISO_C_BINDING}{\texttt{ http\+://fortranwiki.\+org/fortran/show/\+ISO\+\_\+\+C\+\_\+\+BINDING}}
+\item \href{http://fortranwiki.org/fortran/show/Generating+C+Interfaces}{\texttt{ http\+://fortranwiki.\+org/fortran/show/\+Generating+\+C+\+Interfaces}}
+\end{DoxyItemize}
+
+Using ICB is seamless\+:
+
+
+\begin{DoxyItemize}
+\item Compile {\ttfamily arpack-\/ng} with ISO\+\_\+\+C\+\_\+\+BINDING\+: you\textquotesingle{}ll get both old-\/fashion fortran symbols and new ISO\+\_\+\+C\+\_\+\+BINDING symbols available for linking.
+\item Add {\ttfamily \#include \char`\"{}arpack.\+h\char`\"{}} in your C code.
+\item Replace all \mbox{[}sdcz\mbox{]}\mbox{[}ae\mbox{]}upd calls by \mbox{[}sdcz\mbox{]}\mbox{[}ae\mbox{]}upd\+\_\+c\+: functions suffixed with \+\_\+c are ISO\+\_\+\+C\+\_\+\+BINDING compliant (exposing same arguments than original fortran functions).
+\end{DoxyItemize}
+
+{\bfseries{Example}}\+: to test arpack with ISO\+\_\+\+C\+\_\+\+BINDING
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ ./configure -\/-\/enable-\/icb}
+\DoxyCodeLine{\$ cmake -\/D ICB=ON}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md6}{}\doxysection{Eigen support}\label{md_README_autotoc_md6}
+{\ttfamily arpack-\/ng} provides C++ eigensolver based on both ISO\+\_\+\+C\+\_\+\+BINDING and {\ttfamily eigen}.
+
+Check out {\ttfamily ./\+EXAMPLES/\+MATRIX\+\_\+\+MARKET/\+README} for more details.
+
+{\bfseries{Example}}\+: to test arpack with {\ttfamily eigen}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ mkdir build}
+\DoxyCodeLine{\$ cd build}
+\DoxyCodeLine{\$ cmake -\/D EXAMPLES=ON -\/D ICB=ON -\/D EIGEN=ON ..}
+\DoxyCodeLine{\$ make all check}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md7}{}\doxysection{Python support}\label{md_README_autotoc_md7}
+{\ttfamily pyarpack}\+: python support based on {\ttfamily Boost.\+Python.\+Numpy} exposing C++ API. {\ttfamily pyarpack} exposes in python the {\ttfamily arpack-\/ng} C++ eigensolver (based on {\ttfamily eigen}).
+
+Check out {\ttfamily ./\+EXAMPLES/\+PYARPACK/\+README} for more details.
+
+{\bfseries{Example}}\+: to test arpack with python3
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ mkdir build}
+\DoxyCodeLine{\$ cd build}
+\DoxyCodeLine{\$ cmake -\/D EXAMPLES=ON -\/D ICB=ON -\/D EIGEN=ON -\/D PYTHON3=ON ..}
+\DoxyCodeLine{\$ make all check}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md8}{}\doxysection{📁 Directory structure}\label{md_README_autotoc_md8}
+
+\begin{DoxyItemize}
+\item You have successfully unbundled ARPACK-\/\+NG\`{} and are now in the ARPACK-\/\+NG directory that was created for you.
+\item The directory SRC contains the top level routines including the highest level {\bfseries{reverse communication interface}} routines
+\begin{DoxyItemize}
+\item {\ttfamily ssaupd}, {\ttfamily dsaupd}\+: symmetric single and double precision
+\item {\ttfamily snaupd}, {\ttfamily dnaupd}\+: non-\/symmetric single and double precision
+\item {\ttfamily cnaupd}, {\ttfamily znaupd}\+: complex non-\/symmetric single and double precision
+\item The headers of these routines contain full documentation of calling sequence and usage.
+\item Additional information is given in the {\ttfamily /\+DOCUMENTS} directory.
+\end{DoxyItemize}
+\item The directory {\ttfamily PARPACK} contains the Parallel ARPACK routines.
+\item Example driver programs that illustrate all the computational modes, data types and precisions may be found in the EXAMPLES directory. Upon executing the {\ttfamily ls EXAMPLES} command you should see the following directories
+\end{DoxyItemize}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{├── BAND}
+\DoxyCodeLine{├── COMPLEX}
+\DoxyCodeLine{├── Makefile.am}
+\DoxyCodeLine{├── MATRIX\_MARKET}
+\DoxyCodeLine{├── NONSYM}
+\DoxyCodeLine{├── PYARPACK}
+\DoxyCodeLine{├── README}
+\DoxyCodeLine{├── SIMPLE}
+\DoxyCodeLine{├── SVD}
+\DoxyCodeLine{└── SYM}
+
+\end{DoxyCode}
+
+
+
+\begin{DoxyItemize}
+\item Example programs for banded, complex, nonsymmetric, symmetric, and singular value decomposition may be found in the directories BAND, COMPLEX, NONSYM, SYM, SVD respectively.
+\item Look at the README file for further information.
+\item To get started, get into the SIMPLE directory to see example programs that illustrate the use of ARPACK in the simplest modes of operation for the most commonly posed standard eigenvalue problems.
+\end{DoxyItemize}
+
+\begin{quote}
+Example programs for Parallel ARPACK may be found in the directory {\ttfamily PARPACK/\+EXAMPLES}. Look at the README file for further information. \end{quote}
+\hypertarget{md_README_autotoc_md9}{}\doxysection{Install 🚀}\label{md_README_autotoc_md9}
+\hypertarget{md_README_autotoc_md10}{}\doxysubsection{Getting arpack-\/ng}\label{md_README_autotoc_md10}
+Unlike ARPACK, ARPACK-\/\+NG is providing autotools and cmake based build system. In addition, {\ttfamily ARPACK-\/\+NG} also provides ISO\+\_\+\+C\+\_\+\+BINDING support, which enables to call fortran subroutines natively from C or C++.
+
+First, obtain the source code 📥 from github\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ git clone https://github.com/opencollab/arpack-\/ng.git}
+\DoxyCodeLine{\$ cd ./arpack-\/ng}
+
+\end{DoxyCode}
+
+
+If you prefer the ssh to obtain the source code, then use\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ git clone git@github.com:opencollab/arpack-\/ng.git}
+\DoxyCodeLine{\$ cd ./arpack-\/ng}
+
+\end{DoxyCode}
+
+
+\begin{quote}
+Note, It is recommended to install {\ttfamily arpack} at standard location on your system by using your root privilege. \end{quote}
+\hypertarget{md_README_autotoc_md11}{}\doxysubsection{Using autotools}\label{md_README_autotoc_md11}
+In the source directory, use the following commands to configure, build and install {\ttfamily arpack-\/ng}.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ sh bootstrap}
+\DoxyCodeLine{\$ ./configure -\/-\/enable-\/mpi}
+\DoxyCodeLine{\$ make}
+\DoxyCodeLine{\$ make check}
+\DoxyCodeLine{\$ sudo make install}
+
+\end{DoxyCode}
+
+
+Congratulations 🎉, you have installed {\ttfamily arpack} lib using autotools (caution\+: you need {\ttfamily sudo} to install in your system).
+
+The above-\/mentioned process will build everything including the examples and parallel support using MPI.\hypertarget{md_README_autotoc_md12}{}\doxysubsection{Using cmake}\label{md_README_autotoc_md12}
+You can install {\ttfamily ARPACK-\/\+NG} by using cmake. If you do not have cmake, then please download the binary from {\ttfamily pip} using\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ python3 -\/m pip install cmake}
+\DoxyCodeLine{\$ which cmake \&\& cmake -\/-\/version}
+
+\end{DoxyCode}
+
+
+After installing cmake, follow the instruction given below.
+
+Caution\+: Make sure you are in source directory of ARPACK-\/\+NG.
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ mkdir build}
+\DoxyCodeLine{\$ cd build}
+\DoxyCodeLine{\$ cmake -\/D EXAMPLES=ON -\/D MPI=ON -\/D BUILD\_SHARED\_LIBS=ON ..}
+\DoxyCodeLine{\$ make}
+\DoxyCodeLine{\$ sudo make install}
+
+\end{DoxyCode}
+
+
+✨ Congratulations, you have installed {\ttfamily arpack} lib using cmake (caution\+: you need {\ttfamily sudo} to install in your system).
+
+The above-\/mentioned process will build everything including the examples and parallel support using MPI.\hypertarget{md_README_autotoc_md13}{}\doxysubsection{Customize build / install}\label{md_README_autotoc_md13}
+You can also customize the installation of {\ttfamily arpack} using the autotools.
+
+To customize the install directories\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ LIBSUFFIX="{}64"{} ./configure}
+\DoxyCodeLine{\$ make all install}
+
+\end{DoxyCode}
+
+
+To enable ILP64 support\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ INTERFACE64="{}1"{} ITF64SUFFIX="{}ILP64"{} ./configure}
+\DoxyCodeLine{\$ make all install}
+
+\end{DoxyCode}
+
+
+To enable ISO\+\_\+\+C\+\_\+\+BINDING support\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ ./configure -\/-\/enable-\/icb}
+
+\end{DoxyCode}
+
+
+You can customize the build by declaring the cmake options during configuration.
+
+To customize the install directories\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cmake -\/D LIBSUFFIX="{}64"{} ..}
+\DoxyCodeLine{\$ make all install}
+
+\end{DoxyCode}
+
+
+To enable ILP64 support\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cmake -\/D INTERFACE64=ON -\/D ITF64SUFFIX="{}ILP64"{} ..}
+\DoxyCodeLine{\$ make all install}
+
+\end{DoxyCode}
+
+
+To enable ISO\+\_\+\+C\+\_\+\+BINDING support\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ cmake -\/D ICB=ON}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md14}{}\doxysection{Supported Operating Systems\+:}\label{md_README_autotoc_md14}
+\hypertarget{md_README_autotoc_md15}{}\doxysubsection{Linux support}\label{md_README_autotoc_md15}
+{\ttfamily arpack-\/ng} runs on debian-\/based distros.\hypertarget{md_README_autotoc_md16}{}\doxysubsection{Mac OS support}\label{md_README_autotoc_md16}
+On mac OS, with GNU compilers, you may need to customize options\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ LIBS="{}-\/framework Accelerate"{} FFLAGS="{}-\/ff2c -\/fno-\/second-\/underscore"{} FCFLAGS="{}-\/ff2c -\/fno-\/second-\/underscore"{} ./configure}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md17}{}\doxysubsection{Windows support}\label{md_README_autotoc_md17}
+{\ttfamily arpack-\/ng} runs on windows using {\ttfamily mingw64}.\hypertarget{md_README_autotoc_md18}{}\doxysection{Using arpack-\/ng from your own codebase}\label{md_README_autotoc_md18}
+\hypertarget{md_README_autotoc_md19}{}\doxysubsection{With autotools}\label{md_README_autotoc_md19}
+First, set {\ttfamily PKG\+\_\+\+CONFIG\+\_\+\+PATH} to the location in the installation directory where {\ttfamily arpack.\+pc} lies.
+
+Then, insert the following lines in your {\ttfamily configure.\+ac}\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{PKG\_CHECK\_MODULES([ARPACK], [arpack])}
+\DoxyCodeLine{AC\_SUBST([ARPACK\_CFLAGS])}
+\DoxyCodeLine{AC\_SUBST([ARPACK\_LIBS])}
+
+\end{DoxyCode}
+
+
+Note\+: make sure you have installed {\ttfamily pkg-\/config}.\hypertarget{md_README_autotoc_md20}{}\doxysubsection{With CMake}\label{md_README_autotoc_md20}
+You can use arpack in your CMake builds by using {\ttfamily ARPACK\+::\+ARPACK} target. For example,
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{FIND\_PACKAGE(arpack-\/ng)}
+\DoxyCodeLine{ADD\_EXECUTABLE(main main.f)}
+\DoxyCodeLine{TARGET\_INCLUDE\_DIRECTORIES(main PUBLIC ARPACK::ARPACK)}
+\DoxyCodeLine{TARGET\_LINK\_LIBRARIES(main ARPACK::ARPACK)}
+
+\end{DoxyCode}
+
+
+To use PARPACK in your Cmake builds, use {\ttfamily PARPACK\+::\+PARPACK} target\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{FIND\_PACKAGE(arpack-\/ng)}
+\DoxyCodeLine{ADD\_EXECUTABLE(main main.f)}
+\DoxyCodeLine{TARGET\_INCLUDE\_DIRECTORIES(main PUBLIC PARPACK::PARPACK)}
+\DoxyCodeLine{TARGET\_LINK\_LIBRARIES(main PARPACK::PARPACK)}
+
+\end{DoxyCode}
+
+
+Note\+: Make sure to update {\ttfamily CMAKE\+\_\+\+MODULE\+\_\+\+PATH} env variable (otheriwse, {\ttfamily find\+\_\+package} won\textquotesingle{}t find arpack-\/ng cmake file).\hypertarget{md_README_autotoc_md21}{}\doxysubsection{FAQ}\label{md_README_autotoc_md21}
+
+\begin{DoxyItemize}
+\item Where can I find ARPACK user\textquotesingle{}s guide?
+
+\href{http://li.mit.edu/Archive/Activities/Archive/CourseWork/Ju_Li/MITCourses/18.335/Doc/ARPACK/Lehoucq97.pdf}{\texttt{ http\+://li.\+mit.\+edu/\+Archive/\+Activities/\+Archive/\+Course\+Work/\+Ju\+\_\+\+Li/\+MITCourses/18.\+335/\+Doc/\+ARPACK/\+Lehoucq97.\+pdf}}
+\item Calling arpack\textquotesingle{}s aupd methods returns {\ttfamily info = -\/9 -\/ Starting vector is zero.}\+: why?
+
+Residuals are null. Try to set {\ttfamily resid} to small values (like epsilon machine magnitude) but {\itshape not exactly} zero. Residuals {\ttfamily resid = A$\ast$v -\/ lamdba$\ast$v} target {\itshape exactly} the zero vector. When {\ttfamily resid} is close enough to zero, the iterative procedure stops.
+\item Say I have an estimate of an eigen value, how to give this information to arpack?
+
+You need to shift of an amount of about this estimate of {\ttfamily lambda}. Grep {\ttfamily back\+Transform} in {\ttfamily arpack\+Solver.\+hpp} to see an example. For more informations, checkout \char`\"{}\+NUMERICAL METHODS FOR LARGE EIGENVALUE PROBLEMS\char`\"{} by Yousef Saad\+: \href{https://www-users.cse.umn.edu/~saad/eig_book_2ndEd.pdf}{\texttt{ https\+://www-\/users.\+cse.\+umn.\+edu/$\sim$saad/eig\+\_\+book\+\_\+2nd\+Ed.\+pdf}} (paragraph 4.\+1.\+2. and section 4.\+1.).
+\item Say I have an estimate of an eigen vector, how to give this information to arpack?
+
+You need to copy this eigen vector estimate in {\ttfamily v} (not {\ttfamily resid}) and set {\ttfamily info} to 1 before calling aupd methods. The {\ttfamily v} vector targets a non-\/null vector such that {\ttfamily resid = 0}, that is, such that {\ttfamily A$\ast$v = lambda$\ast$v}.
+\end{DoxyItemize}\hypertarget{md_README_autotoc_md22}{}\doxysection{Using MKL instead of BLAS / LAPACK}\label{md_README_autotoc_md22}
+How to use arpack-\/ng with Intel MKL\+:
+
+
+\begin{DoxyItemize}
+\item Let autotools/cmake find MKL for you based on pkg-\/config files (setting {\ttfamily PKG\+\_\+\+CONFIG\+\_\+\+PATH}) or cmake options ({\ttfamily BLA\+\_\+\+VENDOR=Intel}).
+\item Refers to the Intel Link Advisor\+: \href{https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-link-line-advisor.html}{\texttt{ https\+://www.\+intel.\+com/content/www/us/en/developer/tools/oneapi/onemkl-\/link-\/line-\/advisor.\+html}}.
+\end{DoxyItemize}\hypertarget{md_README_autotoc_md23}{}\doxysection{Good luck and enjoy 🎊}\label{md_README_autotoc_md23}
