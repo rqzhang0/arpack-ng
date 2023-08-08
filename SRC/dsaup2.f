@@ -999,6 +999,7 @@ c        | no shifts may be applied, then prepare to exit          |
 c        %---------------------------------------------------------%
 c
          nptemp = np
+
          do 302 j=1, nptemp
             if (bounds(j) .eq. zero) then
                np = np - 1
