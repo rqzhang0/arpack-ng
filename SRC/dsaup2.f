@@ -865,7 +865,454 @@ c
      &           '_saup2: subdiagonal of compressed H matrix')
          end if
 c
-      go to 1000
+!      go to 1000
+      do while(.TRUE.)
+        iter = iter + 1
+c
+         if (msglvl .gt. 0) then
+            call ivout (logfil, 1, [iter], ndigit,
+     &           '_saup2: **** Start of major iteration number ****')
+         end if
+         if (msglvl .gt. 1) then
+            call ivout (logfil, 1, [nev], ndigit,
+     &     '_saup2: The length of the current Lanczos factorization')
+            call ivout (logfil, 1, [np], ndigit,
+     &           '_saup2: Extend the Lanczos factorization by')
+         end if
+c
+c        %------------------------------------------------------------%
+c        | Compute NP additional steps of the Lanczos factorization. |
+c        %------------------------------------------------------------%
+c
+         ido = 0
+         update = .true.
+c
+         call dsaitr (ido, bmat, n, nev, np, mode, resid, rnorm, v,
+     &                ldv, h, ldh, ipntr, workd, info)
+c
+c        %---------------------------------------------------%
+c        | ido .ne. 99 implies use of reverse communication  |
+c        | to compute operations involving OP and possibly B |
+c        %---------------------------------------------------%
+c
+         if (ido .ne. 99) return
+c
+         if (info .gt. 0) then
+c
+c           %-----------------------------------------------------%
+c           | dsaitr was unable to build an Lanczos factorization |
+c           | of length NEV0+NP0. INFO is returned with the size  |
+c           | of the factorization built. Exit main loop.         |
+c           %-----------------------------------------------------%
+c
+            np = info
+            mxiter = iter
+            info = -9999
+         ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+      call arscnd (t1)
+      tsaup2 = t1 - t0
+c
+      return
+         end if
+         update = .false.
+c
+         if (msglvl .gt. 1) then
+            call dvout (logfil, 1, [rnorm], ndigit,
+     &           '_saup2: Current B-norm of residual for factorization')
+         end if
+c
+c        %--------------------------------------------------------%
+c        | Compute the eigenvalues and corresponding error bounds |
+c        | of the current symmetric tridiagonal matrix.           |
+c        %--------------------------------------------------------%
+c
+         call dseigt (rnorm, kplusp, h, ldh, ritz, bounds, workl, ierr)
+c
+         if (ierr .ne. 0) then
+            info = -8
+         ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+      call arscnd (t1)
+      tsaup2 = t1 - t0
+c
+      return
+         end if
+c
+c        %----------------------------------------------------%
+c        | Make a copy of eigenvalues and corresponding error |
+c        | bounds obtained from _seigt.                       |
+c        %----------------------------------------------------%
+c
+         call dcopy(kplusp, ritz, 1, workl(kplusp+1), 1)
+         call dcopy(kplusp, bounds, 1, workl(2*kplusp+1), 1)
+c
+c        %---------------------------------------------------%
+c        | Select the wanted Ritz values and their bounds    |
+c        | to be used in the convergence test.               |
+c        | The selection is based on the requested number of |
+c        | eigenvalues instead of the current NEV and NP to  |
+c        | prevent possible misconvergence.                  |
+c        | * Wanted Ritz values := RITZ(NP+1:NEV+NP)         |
+c        | * Shifts := RITZ(1:NP) := WORKL(1:NP)             |
+c        %---------------------------------------------------%
+c
+         nev = nev0
+         np = np0
+         call dsgets (ishift, which, nev, np, ritz, bounds, workl)
+c
+c        %-------------------%
+c        | Convergence test. |
+c        %-------------------%
+c
+         call dcopy (nev, bounds(np+1), 1, workl(np+1), 1)
+         call dsconv (nev, ritz(np+1), workl(np+1), tol, nconv)
+c
+         if (msglvl .gt. 2) then
+            kp(1) = nev
+            kp(2) = np
+            kp(3) = nconv
+            call ivout (logfil, 3, kp, ndigit,
+     &                  '_saup2: NEV, NP, NCONV are')
+            call dvout (logfil, kplusp, ritz, ndigit,
+     &           '_saup2: The eigenvalues of H')
+            call dvout (logfil, kplusp, bounds, ndigit,
+     &          '_saup2: Ritz estimates of the current NCV Ritz values')
+         end if
+c
+c        %---------------------------------------------------------%
+c        | Count the number of unwanted Ritz values that have zero |
+c        | Ritz estimates. If any Ritz estimates are equal to zero |
+c        | then a leading block of H of order equal to at least    |
+c        | the number of Ritz values with zero Ritz estimates has  |
+c        | split off. None of these Ritz values may be removed by  |
+c        | shifting. Decrease NP the number of shifts to apply. If |
+c        | no shifts may be applied, then prepare to exit          |
+c        %---------------------------------------------------------%
+c
+         nptemp = np
+         do 302 j=1, nptemp
+            if (bounds(j) .eq. zero) then
+               np = np - 1
+               nev = nev + 1
+            end if
+ 302      continue
+c
+         if ( (nconv .ge. nev0) .or.
+     &        (iter .gt. mxiter) .or.
+     &        (np .eq. 0) ) then
+c
+c           %------------------------------------------------%
+c           | Prepare to exit. Put the converged Ritz values |
+c           | and corresponding bounds in RITZ(1:NCONV) and  |
+c           | BOUNDS(1:NCONV) respectively. Then sort. Be    |
+c           | careful when NCONV > NP since we don't want to |
+c           | swap overlapping locations.                    |
+c           %------------------------------------------------%
+c
+            if (which .eq. 'BE') then
+c
+c              %-----------------------------------------------------%
+c              | Both ends of the spectrum are requested.            |
+c              | Sort the eigenvalues into algebraically decreasing  |
+c              | order first then swap low end of the spectrum next  |
+c              | to high end in appropriate locations.               |
+c              | NOTE: when np < floor(nev/2) be careful not to swap |
+c              | overlapping locations.                              |
+c              %-----------------------------------------------------%
+c
+               wprime = 'SA'
+               call dsortr (wprime, .true., kplusp, ritz, bounds)
+               nevd2 = nev0 / 2
+               nevm2 = nev0 - nevd2
+               if ( nev .gt. 1 ) then
+                  np = kplusp - nev0
+                  call dswap ( min(nevd2,np), ritz(nevm2+1), 1,
+     &                 ritz( max(kplusp-nevd2+1,kplusp-np+1) ), 1)
+                  call dswap ( min(nevd2,np), bounds(nevm2+1), 1,
+     &                 bounds( max(kplusp-nevd2+1,kplusp-np+1)), 1)
+               end if
+c
+            else
+c
+c              %--------------------------------------------------%
+c              | LM, SM, LA, SA case.                             |
+c              | Sort the eigenvalues of H into the an order that |
+c              | is opposite to WHICH, and apply the resulting    |
+c              | order to BOUNDS.  The eigenvalues are sorted so  |
+c              | that the wanted part are always within the first |
+c              | NEV locations.                                   |
+c              %--------------------------------------------------%
+c
+               if (which .eq. 'LM') wprime = 'SM'
+               if (which .eq. 'SM') wprime = 'LM'
+               if (which .eq. 'LA') wprime = 'SA'
+               if (which .eq. 'SA') wprime = 'LA'
+c
+               call dsortr (wprime, .true., kplusp, ritz, bounds)
+c
+            end if
+c
+c           %--------------------------------------------------%
+c           | Scale the Ritz estimate of each Ritz value       |
+c           | by 1 / max(eps23,magnitude of the Ritz value).   |
+c           %--------------------------------------------------%
+c
+            do 351 j = 1, nev0
+               temp = max( eps23, abs(ritz(j)) )
+               bounds(j) = bounds(j)/temp
+ 351         continue
+c
+c           %----------------------------------------------------%
+c           | Sort the Ritz values according to the scaled Ritz  |
+c           | estimates.  This will push all the converged ones  |
+c           | towards the front of ritzr, ritzi, bounds          |
+c           | (in the case when NCONV < NEV.)                    |
+c           %----------------------------------------------------%
+c
+            wprime = 'LA'
+            call dsortr(wprime, .true., nev0, bounds, ritz)
+c
+c           %----------------------------------------------%
+c           | Scale the Ritz estimate back to its original |
+c           | value.                                       |
+c           %----------------------------------------------%
+c
+            do 401 j = 1, nev0
+                temp = max( eps23, abs(ritz(j)) )
+                bounds(j) = bounds(j)*temp
+ 401         continue
+c
+c           %--------------------------------------------------%
+c           | Sort the "converged" Ritz values again so that   |
+c           | the "threshold" values and their associated Ritz |
+c           | estimates appear at the appropriate position in  |
+c           | ritz and bound.                                  |
+c           %--------------------------------------------------%
+c
+            if (which .eq. 'BE') then
+c
+c              %------------------------------------------------%
+c              | Sort the "converged" Ritz values in increasing |
+c              | order.  The "threshold" values are in the      |
+c              | middle.                                        |
+c              %------------------------------------------------%
+c
+               wprime = 'LA'
+               call dsortr(wprime, .true., nconv, ritz, bounds)
+c
+            else
+c
+c              %----------------------------------------------%
+c              | In LM, SM, LA, SA case, sort the "converged" |
+c              | Ritz values according to WHICH so that the   |
+c              | "threshold" value appears at the front of    |
+c              | ritz.                                        |
+c              %----------------------------------------------%
+
+               call dsortr(which, .true., nconv, ritz, bounds)
+c
+            end if
+c
+c           %------------------------------------------%
+c           |  Use h( 1,1 ) as storage to communicate  |
+c           |  rnorm to _seupd if needed               |
+c           %------------------------------------------%
+c
+            h(1,1) = rnorm
+c
+            if (msglvl .gt. 1) then
+               call dvout (logfil, kplusp, ritz, ndigit,
+     &            '_saup2: Sorted Ritz values.')
+               call dvout (logfil, kplusp, bounds, ndigit,
+     &            '_saup2: Sorted ritz estimates.')
+            end if
+c
+c           %------------------------------------%
+c           | Max iterations have been exceeded. |
+c           %------------------------------------%
+c
+            if (iter .gt. mxiter .and. nconv .lt. nev) info = 1
+c
+c           %---------------------%
+c           | No shifts to apply. |
+c           %---------------------%
+c
+            if (np .eq. 0 .and. nconv .lt. nev0) info = 2
+c
+            np = nconv
+      mxiter = iter
+      nev = nconv
+c
+      ido = 99
+c
+c     %------------%
+c     | Error exit |
+c     %------------%
+c
+      call arscnd (t1)
+      tsaup2 = t1 - t0
+c
+      return
+c
+         else if (nconv .lt. nev .and. ishift .eq. 1) then
+c
+c           %---------------------------------------------------%
+c           | Do not have all the requested eigenvalues yet.    |
+c           | To prevent possible stagnation, adjust the number |
+c           | of Ritz values and the shifts.                    |
+c           %---------------------------------------------------%
+c
+            nevbef = nev
+            nev = nev + min (nconv, np/2)
+            if (nev .eq. 1 .and. kplusp .ge. 6) then
+               nev = kplusp / 2
+            else if (nev .eq. 1 .and. kplusp .gt. 2) then
+               nev = 2
+            end if
+            np  = kplusp - nev
+c
+c           %---------------------------------------%
+c           | If the size of NEV was just increased |
+c           | resort the eigenvalues.               |
+c           %---------------------------------------%
+c
+            if (nevbef .lt. nev)
+     &         call dsgets (ishift, which, nev, np, ritz, bounds,
+     &              workl)
+c
+         end if
+c
+         if (msglvl .gt. 0) then
+            call ivout (logfil, 1, [nconv], ndigit,
+     &           '_saup2: no. of "converged" Ritz values at this iter.')
+            if (msglvl .gt. 1) then
+               kp(1) = nev
+               kp(2) = np
+               call ivout (logfil, 2, kp, ndigit,
+     &              '_saup2: NEV and NP are')
+               call dvout (logfil, nev, ritz(np+1), ndigit,
+     &              '_saup2: "wanted" Ritz values.')
+               call dvout (logfil, nev, bounds(np+1), ndigit,
+     &              '_saup2: Ritz estimates of the "wanted" values ')
+            end if
+         end if
+
+c
+         if (ishift .eq. 0) then
+c
+c           %-----------------------------------------------------%
+c           | User specified shifts: reverse communication to     |
+c           | compute the shifts. They are returned in the first  |
+c           | NP locations of WORKL.                              |
+c           %-----------------------------------------------------%
+c
+            ushift = .true.
+            ido = 3
+            return
+         end if
+c
+c
+c        %------------------------------------%
+c        | Back from reverse communication;   |
+c        | User specified shifts are returned |
+c        | in WORKL(1:*NP)                   |
+c        %------------------------------------%
+c
+         ushift = .false.
+c
+c
+c        %---------------------------------------------------------%
+c        | Move the NP shifts to the first NP locations of RITZ to |
+c        | free up WORKL.  This is for the non-exact shift case;   |
+c        | in the exact shift case, dsgets already handles this.   |
+c        %---------------------------------------------------------%
+c
+         if (ishift .eq. 0) call dcopy (np, workl, 1, ritz, 1)
+c
+         if (msglvl .gt. 2) then
+            call ivout (logfil, 1, [np], ndigit,
+     &                  '_saup2: The number of shifts to apply ')
+            call dvout (logfil, np, workl, ndigit,
+     &                  '_saup2: shifts selected')
+            if (ishift .eq. 1) then
+               call dvout (logfil, np, bounds, ndigit,
+     &                  '_saup2: corresponding Ritz estimates')
+             end if
+         end if
+c
+c        %---------------------------------------------------------%
+c        | Apply the NP0 implicit shifts by QR bulge chasing.      |
+c        | Each shift is applied to the entire tridiagonal matrix. |
+c        | The first 2*N locations of WORKD are used as workspace. |
+c        | After dsapps is done, we have a Lanczos                 |
+c        | factorization of length NEV.                            |
+c        %---------------------------------------------------------%
+c
+         call dsapps (n, nev, np, ritz, v, ldv, h, ldh, resid, q, ldq,
+     &        workd)
+c
+c        %---------------------------------------------%
+c        | Compute the B-norm of the updated residual. |
+c        | Keep B*RESID in WORKD(1:N) to be used in    |
+c        | the first step of the next call to dsaitr.  |
+c        %---------------------------------------------%
+c
+         cnorm = .true.
+         call arscnd (t2)
+         if (bmat .eq. 'G') then
+            nbx = nbx + 1
+            call dcopy (n, resid, 1, workd(n+1), 1)
+            ipntr(1) = n + 1
+            ipntr(2) = 1
+            ido = 2
+c
+c           %----------------------------------%
+c           | Exit in order to compute B*RESID |
+c           %----------------------------------%
+c
+            return
+         else if (bmat .eq. 'I') then
+            call dcopy (n, resid, 1, workd, 1)
+         end if
+c
+c
+c        %----------------------------------%
+c        | Back from reverse communication; |
+c        | WORKD(1:N) := B*RESID            |
+c        %----------------------------------%
+c
+         if (bmat .eq. 'G') then
+            call arscnd (t3)
+            tmvbx = tmvbx + (t3 - t2)
+         end if
+c
+         if (bmat .eq. 'G') then
+            rnorm = ddot (n, resid, 1, workd, 1)
+            rnorm = sqrt(abs(rnorm))
+         else if (bmat .eq. 'I') then
+            rnorm = dnrm2(n, resid, 1)
+         end if
+         cnorm = .false.
+c
+         if (msglvl .gt. 2) then
+            call dvout (logfil, 1, [rnorm], ndigit,
+     &      '_saup2: B-norm of residual for NEV factorization')
+            call dvout (logfil, nev, h(1,2), ndigit,
+     &           '_saup2: main diagonal of compressed H matrix')
+            call dvout (logfil, nev-1, h(2,1), ndigit,
+     &           '_saup2: subdiagonal of compressed H matrix')
+         end if
+
+      end do
 c
 c     %---------------------------------------------------------------%
 c     |                                                               |
